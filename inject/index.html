@@ -1,10 +1,182 @@
+<!DOCTYPE html
 <html>
 <head>
 	<meta charset="utf-8">
 	<title>inject</title>
+	<script type="text/javascript" src="./jquery-1.8.3.min.js"></script>
+	<script type="text/javascript" src="../angular-1.1.5.min.js"></script>
 </head>
 <body>
 <h1>inject</h1>
+<div ng-controller="BoxCtrl" id="BoxCtrl">
+    <div style="width: 100px; height: 100px; background-color: red;" ng-click="click()"></div>
+    <p>{{ w }} x {{ h }}</p>
+    <p>W: <input type="text" ng-model="w" /></p>
+    <p>H: <input type="text" ng-model="h" /></p>
+</div>
 
+<!-- <div ng-controller="BoxCtrl2" id="BoxCtrl2">
+<p>{{name}}</p>
+</div> -->
+
+  
+  <script type="text/javascript" charset="utf-8">
+  
+
+  var app = angular.module('app', []);
+  app.config(['$compileProvider', '$controllerProvider', '$filterProvider', '$httpProvider', '$provide', '$routeProvider', 
+  	function ($compileProvider, $controllerProvider, $filterProvider, $httpProvider, $provide, $routeProvider) {
+  		/*  module register  */
+        $provide.factory('moduleRegister', ['$injector', '$log', function ($injector, $log) {
+            var cache = [],
+                requires = [],
+                runBlocks = [],
+                invokeQueue = [],
+                providers = {
+                    $compileProvider: $compileProvider,
+                    $controllerProvider: $controllerProvider,
+                    $filterProvider: $filterProvider,
+                    $provide: $provide
+                };
+            return function (modules) {
+                angular.forEach(modules, function (name, index) {
+                	var module;
+                	console.log(111111,modules,name)
+                    try {
+                        if (module = angular.module(name).requires) {
+                        	console.log('module',module)
+                            requires = requires.concat(module);
+                            console.log('requires',requires,module);
+                            console.log('this',this)
+
+                            modules.push(name)
+                        }
+                    } catch (ex) {
+                        if (ex.message) { ex.message += ' from ' + name; }
+                        $log.error(ex.message);
+                        throw ex
+                    }
+                });
+           
+                angular.forEach(requires, function (name) {
+                    try {
+                        angular.module(name) && modules.push(name)
+                    } catch (ex) {
+                        if (ex.message) { ex.message += ' from ' + name; }
+                        $log.error(ex.message);
+                        throw ex
+                    }
+                });
+                angular.forEach(modules, function (module, index) {
+                    try {
+                        index = modules[modules.length - index - 1];
+                        module = angular.module(index);
+                        if (cache.indexOf(module.name) === -1) {
+                            cache.push(module.name);
+                            runBlocks = runBlocks.concat(module._runBlocks);
+                            invokeQueue = invokeQueue.concat(module._invokeQueue);
+                        }
+                    } catch (ex) {
+                        if (ex.message) { ex.message += ' from ' + index; }
+                        $log.error(ex.message);
+                        throw ex
+                    }
+                });
+                console.log('invokeQueue',invokeQueue)
+                angular.forEach(invokeQueue, function (queue, provide) {
+                    try {
+                        if(providers.hasOwnProperty(queue[0]) && (provide = providers[queue[0]]) ){
+                        	console.log('provide',provide)
+                        	provide[queue[1]].apply(provide, queue[2]);
+                        }
+                        /*$log.error('unsupported provider ' + queue[0]);*/
+                    } catch (ex) {
+                        if (ex.message) { ex.message += ' from ' + queue[0]; }
+                        $log.error(ex.message);
+                        throw ex
+                    }
+                });
+                angular.forEach(runBlocks, function (fn) { 
+                	$injector.invoke(fn) ;
+                });
+            }
+        }]);
+  }]);
+  app.factory('f0',function(){
+  	    return { name:'f0'};
+  });
+  app.service('s0',function(){
+  	    return { name:'s0'};
+  });
+ 
+
+  var app1 = angular.module('app1', []);
+
+
+  app1.service('s1',function(){
+  	    return { name:'s1'};
+  });
+  app1.factory('f1',function(){
+  	    return { name:'f1'};
+  });
+  app1.run(function(){
+  	   console.log('app1.run')
+  });
+  
+  
+  //angular.injector(['ng', 'app'])
+  
+  // annotated
+ /* function explicit(serviceA) {};
+  explicit.$inject = ['serviceA'];
+  $injector.invoke(explicit);*/
+  /*$injector.invoke(['serviceA', function(serviceA){
+  	    return {
+  	    	alert:function(){
+  	    		alert('serviceA');
+  	    	}
+  	    }
+  	    
+  }]);*/
+ 
+  var BoxCtrl = function($scope, $element,moduleRegister){
+      moduleRegister(['app1']);
+     console.log(angular.module('app'),angular.module('app3'));
+     console.log(angular.injector(['ng','app1']).get('s1'))
+    //$element 就是一个 jQuery 对象
+    var e = $element.children().eq(0);
+    $scope.w = e.width();
+    $scope.h = e.height();
+  
+    $scope.click = function(){
+      $scope.w = parseInt($scope.w) + 10;
+      $scope.h = parseInt($scope.h) + 10;
+    }
+  
+    $scope.$watch('w',
+      function(to, from){
+        e.width(to);
+      }
+    );
+  
+    $scope.$watch('h',
+      function(to, from){
+        e.height(to);
+      }
+    );
+  };
+  //BoxCtrl.$inject = ['$scope', '$element'];
+
+  var app3 = angular.module('app3', ['app']);
+  app3.service('s3',function(){
+  	    return { name:'s3'};
+  });
+  app3.controller('BoxCtrl',BoxCtrl);
+
+  angular.bootstrap(document.documentElement,['app3']);
+
+
+  </script>
+  </body>
 </body>
 </html>
